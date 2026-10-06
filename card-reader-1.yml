@@ -1,6 +1,9 @@
 # Board: ESP32-S3-devkitc-n16r8 Board (Generic)
 # Begin core configuration 
 # August 2026
+#
+# Adding Benewake LiDAR data and output smooth metrics to Home Assistant
+# October 2026
 
 esphome:
   name: card-reader-i
@@ -18,7 +21,10 @@ psram:
   mode: octal
   speed: 80MHz
 
+# 🛠️ CRITICAL UPDATE: Set baud_rate to 0 to disable logging over TX/RX pins, 
+# preventing system noise from corrupting your TF-Luna serial data stream.
 logger:
+  baud_rate: 0
 
 api:
   encryption:
@@ -44,22 +50,39 @@ web_server:
   port: 80
 
 time:
-    - platform: homeassistant
-      id: my_time
-#mqtt:
-#  broker: 192.168.2.12
-#  username: cardreader
-#  password: !secret mqtt_password
-#  discovery_unique_id_generator: legacy
-#  discovery_prefix: homeassistant
-#  topic_prefix: homeassistant
-#  discovery: "false"
-#  discovery_retain: false
-#  idf_send_async: false
-#  keepalive: 60s
-#  clean_session: true
+  - platform: homeassistant
+    id: my_time
 
-# end of core config - begin specific hardware addiitions
+# end of core config - begin specific hardware additions
+# Add this repository link so ESPHome can download the missing code definition
+external_components:
+  - source:
+      type: git
+      url: https://github.com/jdillenburg/esphome
+      ref: main
+    components: [ tfmini ]
+
+# Keep your UART bus mapped to your custom 16 & 17 pins
+uart:
+  - id: tfluna_uart
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 115200
+
+# Your sensor platform will now compile perfectly!
+sensor:
+  - platform: tfmini
+    id: elevator_shaft_depth
+    uart_id: tfluna_uart
+    name: "Elevator Shaft Distance"
+    filters:
+      - multiply: 0.01 
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 2
+      - or:
+          - delta: 0.03
+          - throttle: 60s
 
 light:
   - platform: esp32_rmt_led_strip
@@ -70,7 +93,6 @@ light:
     num_leds: 1
     rgb_order: GRB
     icon: "mdi:led-off"
-#    restore_mode: RESTORE_DEFAULT_ON
   
 wiegand:
   - d0: GPIO4
@@ -98,4 +120,5 @@ switch:
     name: "CR1 Reader LED"
     id: cr1_reader_led
     icon: "mdi:led-outline"
-    
+
+# 📊 NEW: Process 
