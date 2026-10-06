@@ -1,0 +1,101 @@
+# Board: ESP32-S3-devkitc-n16r8 Board (Generic)
+# Begin core configuration 
+# August 2026
+
+esphome:
+  name: card-reader-i
+  friendly_name: Card Reader I
+  area: Garage
+
+esp32:
+  board: esp32-s3-devkitc1-n16r8
+  variant: ESP32S3
+  framework:
+    type: esp-idf
+  flash_size: 16MB
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+
+api:
+  encryption:
+    key: !secret card_reader_i__encryption_key
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: Card Reader I Fallback Hotspot
+    password: !secret card_reader_i__ap_password
+#  power_save_mode: NONE
+  reboot_timeout: 15min
+  use_psram: true
+  domain: .internal.barefootautomation.com
+
+captive_portal:
+
+web_server:
+  port: 80
+
+time:
+    - platform: homeassistant
+      id: my_time
+#mqtt:
+#  broker: 192.168.2.12
+#  username: cardreader
+#  password: !secret mqtt_password
+#  discovery_unique_id_generator: legacy
+#  discovery_prefix: homeassistant
+#  topic_prefix: homeassistant
+#  discovery: "false"
+#  discovery_retain: false
+#  idf_send_async: false
+#  keepalive: 60s
+#  clean_session: true
+
+# end of core config - begin specific hardware addiitions
+
+light:
+  - platform: esp32_rmt_led_strip
+    name: "CR1 OnBoardLED"
+    pin: GPIO48
+    id: light_esp32_rmt_led_strip_1
+    chipset: WS2811
+    num_leds: 1
+    rgb_order: GRB
+    icon: "mdi:led-off"
+#    restore_mode: RESTORE_DEFAULT_ON
+  
+wiegand:
+  - d0: GPIO4
+    d1: GPIO5
+    id: cr1_wiegand
+    on_tag:
+      then:
+        - homeassistant.event:
+            event: esphome.tag_scanned
+            data:
+              tag_id: !lambda "return x;"
+              reader_name: "single_garage_door_reader"
+
+switch:
+  - platform: gpio
+    pin: GPIO6
+    inverted: true # Set true if your reader activates on LOW/GND
+    name: "CR1 Reader Buzzer"
+    id: cr1_reader_buzzer
+    icon: "mdi:speaker"
+
+  - platform: gpio
+    pin: GPIO7
+    inverted: true
+    name: "CR1 Reader LED"
+    id: cr1_reader_led
+    icon: "mdi:led-outline"
+    
